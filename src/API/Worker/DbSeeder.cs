@@ -65,7 +65,7 @@ public static class DbSeeder
                         Status = s.Status.ToString()
                     }).ToList()
                 };
-                
+
                 await mongoCollection.InsertOneAsync(doc);
                 Console.WriteLine("✅ MongoDB seeded.");
             }

@@ -42,6 +42,28 @@ services:
       - mongo_booking_data:/data/db
     networks:
       - booking-network
+  
+  backend-api:
+    build:
+      context: .
+      dockerfile: src/API/Dockerfile
+    container_name: booking_api
+    environment:
+      - ConnectionStrings__Postgres=Host=postgres;Database=booking_db;Username=$POSTGRES_USER;Password=$POSTGRES_PASSWORD
+      - ConnectionStrings__Mongo=mongodb://mongo:27017
+      - ConnectionStrings__Valkey=valkey:6379
+      - RabbitMq__Host=rabbitmq
+      - ASPNETCORE_ENVIRONMENT=Test
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - mongo
+      - valkey
+      - rabbitmq
+    networks:
+      - booking-network
+    
 
 volumes:
   postgres_booking_data:

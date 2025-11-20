@@ -4,5 +4,7 @@ public interface ISeatLockService
 {
     // This will talk to Valkey (Redis)
     // Returns true if lock acquired, false if already locked
-    Task<bool> TryLockSeatAsync(Guid showtimeId, Guid seatId, Guid userId);
+    Task<bool> TryLockSeatsAsync(Guid showtimeId, Guid[] seatIds, Guid userId);
+
+    Task ReleaseLocksAsync(Guid showtimeId, Guid[] seatIds);
 }

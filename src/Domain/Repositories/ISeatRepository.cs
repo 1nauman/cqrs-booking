@@ -5,6 +5,10 @@ namespace Booking.Domain.Repositories;
 public interface ISeatRepository
 {
     Task<Seat?> GetByIdAsync(Guid seatId, CancellationToken ct);
+
+    Task<List<Seat>> GetByIdsAsync(Guid showtimeId, Guid[] seatIds, CancellationToken ct);
+
     Task<Seat?> GetByPositionAsync(Guid showtimeId, string row, int number, CancellationToken ct);
+
     Task UpdateAsync(Seat seat, CancellationToken ct);
 }

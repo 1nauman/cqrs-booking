@@ -18,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddScoped<ICommandHandler<ReserveSeatCommand, bool>, ReserveSeatHandler>();
+builder.Services.AddScoped<ICommandHandler<ReserveSeatsCommand, bool>, ReserveSeatHandler>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -42,7 +42,7 @@ var app = builder.Build();
 await DbSeeder.SeedAsync(app);
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsProduction())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
