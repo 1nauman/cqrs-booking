@@ -44,7 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddMassTransit(o =>
         {
             // Register the consumer
-            o.AddConsumer<Consumers.SeatReservedConsumer>();
+            o.AddConsumer<Consumers.SeatsReservedConsumer>();
 
             o.AddEntityFrameworkOutbox<BookingDbContext>(cfg =>
             {

@@ -20,7 +20,7 @@ public class SeatRepository : ISeatRepository
     {
         return await _context.Seats.FirstOrDefaultAsync(o => o.Id == seatId, ct);
     }
-    
+
     public async Task<List<Seat>> GetByIdsAsync(Guid showtimeId, Guid[] seatIds, CancellationToken ct)
     {
         // We filter by BOTH SeatIds AND ShowtimeId.

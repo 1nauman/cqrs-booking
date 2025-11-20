@@ -50,7 +50,7 @@ public class SeatLockService : ISeatLockService
 
         return (int)result == 1;
     }
-    
+
     public async Task ReleaseLocksAsync(Guid showtimeId, Guid[] seatIds)
     {
         var db = _valKeyStore.GetDatabase();

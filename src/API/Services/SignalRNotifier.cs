@@ -26,4 +26,16 @@ public class SignalRNotifier : IRealTimeNotifier
                 Status = "Reserved"
             });
     }
+
+    public async Task NotifySeatsLockedAsync(Guid showtimeId, Guid[] seatIds, Guid userId)
+    {
+        // Send a single message with an ARRAY of IDs
+        await _hubContext.Clients.Group(showtimeId.ToString())
+            .SendAsync("ReceiveBatchSeatUpdate", new
+            {
+                SeatIds = seatIds,
+                Status = "Reserved",
+                UserId = userId
+            });
+    }
 }

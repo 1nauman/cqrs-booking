@@ -50,6 +50,28 @@ function App() {
           }
         });
 
+        newConnection.on("ReceiveBatchSeatUpdate", (update: { seatIds: string[], status: string }) => {
+          console.log("Batch Update:", update);
+
+          setShowtime(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              seats: prev.seats.map(s =>
+                // Check if this seat is in the update list
+                update.seatIds.includes(s.seatId)
+                  ? { ...s, status: update.status as any }
+                  : s
+              )
+            };
+          });
+
+          // Remove from my selection if someone else took them
+          if (update.status === 'Reserved') {
+            setSelectedIds(prev => prev.filter(id => !update.seatIds.includes(id)));
+          }
+        });
+
         await newConnection.start();
         await newConnection.invoke("JoinShowtime", SHOWTIME_ID);
         setConnection(newConnection);

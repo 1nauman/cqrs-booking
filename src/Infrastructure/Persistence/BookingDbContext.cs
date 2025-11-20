@@ -14,6 +14,8 @@ public class BookingDbContext(DbContextOptions<BookingDbContext> options) : DbCo
 
     public DbSet<Domain.Entities.Booking> Bookings => Set<Domain.Entities.Booking>();
 
+    public DbSet<BookingItem> BookingItems => Set<BookingItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -39,5 +41,22 @@ public class BookingDbContext(DbContextOptions<BookingDbContext> options) : DbCo
             .HasMany(s => s.Seats)
             .WithOne()
             .HasForeignKey(s => s.ShowtimeId);
+
+        // Configure Booking Aggregate
+        modelBuilder.Entity<Domain.Entities.Booking>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            // Configure the One-to-many relationship
+            entity.HasMany(b => b.Items)
+                .WithOne()
+                .HasForeignKey(k => k.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BookingItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+        });
     }
 }

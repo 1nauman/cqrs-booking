@@ -73,26 +73,28 @@ public class ReserveSeatHandler : ICommandHandler<ReserveSeatsCommand, bool>
             }
 
             // 4. DOMAIN LOGIC (Update State)
+            // A. Update Seat Statuses
             foreach (var seat in seats)
             {
                 seat.Reserve(command.UserId);
-
-                // Create Booking Record
-                var booking = new Domain.Entities.Booking(command.ShowtimeId, seat.Id, command.UserId);
-                await _bookingRepository.AddAsync(booking, ct);
-
                 await _seatRepository.UpdateAsync(seat, ct);
             }
 
+            // B. Create ONE Booking Transaction
+            // Create Booking Record
+            var booking = new Domain.Entities.Booking(command.ShowtimeId, command.UserId, seats);
+            await _bookingRepository.AddAsync(booking, ct);
+
             // 5. PUBLISH EVENT
-            // We can publish a bulk event or loop. For simplicity, let's loop or create a BulkEvent.
-            // Ideally, create a 'SeatsReservedEvent' that takes a list.
-            foreach (var seat in seats)
-            {
-                await _publishEndpoint.Publish(new SeatReservedEvent(
-                    seat.ShowtimeId, seat.Id, seat.Row, seat.Number, command.UserId, DateTime.UtcNow
-                ), ct);
-            }
+            // Create the list of items for the event
+            var eventItems = seats.Select(s => new SeatReservedItem(s.Id, s.Row, s.Number)).ToList();
+
+            await _publishEndpoint.Publish(new SeatsReservedEvent(
+                command.ShowtimeId,
+                booking.Id,
+                command.UserId,
+                eventItems
+            ), ct);
 
             // 6. COMMIT
             await _unitOfWork.SaveChangesAsync(ct);
