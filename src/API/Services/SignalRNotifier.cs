@@ -16,26 +16,15 @@ public class SignalRNotifier : IRealTimeNotifier
         _hubContext = hubContext;
     }
 
-    public async Task NotifySeatLockedAsync(Guid showtimeId, Guid seatId, Guid userId)
+    public async Task NotifySeatsStatusChangeAsync(Guid showtimeId, Guid[] seatIds, string newStatus, Guid? userId)
     {
+        // The Client Method Name is now "SeatsStatusChanged"
         await _hubContext.Clients.Group(showtimeId.ToString())
-            .SendAsync("ReceiveSeatUpdate", new
-            {
-                SeatId = seatId,
-                UserId = userId,
-                Status = "Reserved"
-            });
-    }
-
-    public async Task NotifySeatsLockedAsync(Guid showtimeId, Guid[] seatIds, Guid userId)
-    {
-        // Send a single message with an ARRAY of IDs
-        await _hubContext.Clients.Group(showtimeId.ToString())
-            .SendAsync("ReceiveBatchSeatUpdate", new
-            {
-                SeatIds = seatIds,
-                Status = "Reserved",
-                UserId = userId
+            .SendAsync("SeatsStatusChanged", new 
+            { 
+                SeatIds = seatIds, 
+                Status = newStatus, 
+                UserId = userId 
             });
     }
 }

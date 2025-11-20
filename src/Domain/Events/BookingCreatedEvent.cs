@@ -1,10 +1,10 @@
 namespace Booking.Domain.Events;
 
-public record SeatsReservedEvent(
+public record BookingCreatedEvent(
     Guid ShowtimeId,
     Guid BookingId,
     Guid UserId,
-    List<SeatReservedItem> Seats // The list of seats
+    SeatReservedItem[] Seats // The list of seats
 );
 
 public record SeatReservedItem(Guid SeatId, string Row, int Number);

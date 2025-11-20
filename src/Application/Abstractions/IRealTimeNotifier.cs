@@ -2,9 +2,7 @@ namespace Booking.Application.Abstractions;
 
 public interface IRealTimeNotifier
 {
-    // Old singular method (can keep or remove)
-    Task NotifySeatLockedAsync(Guid showtimeId, Guid seatId, Guid userId);
-
-    // New Batch method
-    Task NotifySeatsLockedAsync(Guid showtimeId, Guid[] seatIds, Guid userId);
+    // "Notify that these seats have changed status"
+    // No "Batch", no "Update", just the domain fact.
+    Task NotifySeatsStatusChangeAsync(Guid showtimeId, Guid[] seatIds, string newStatus, Guid? userId);
 }

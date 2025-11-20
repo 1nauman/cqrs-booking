@@ -46,39 +46,55 @@ public class ReservationCleanupService : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
         var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
 
+        // Define threshold (e.g., 2 minutes for demo purposes)
         var threshold = DateTime.UtcNow.AddMinutes(-2);
 
-        // Fetch expired bookings AND include their items
+        // 1. Fetch Expired Bookings WITH their Items
+        // We must use .Include() because BookingItems are in a separate table now
         var expiredBookings = await context.Bookings
-            .Include(b => b.Items) // <--- Eager load items
+            .Include(b => b.Items)
             .Where(b => b.Status == BookingStatus.Pending && b.CreatedAt < threshold)
             .ToListAsync(ct);
 
         if (!expiredBookings.Any()) return;
 
+        _logger.LogInformation($"Found {expiredBookings.Count} expired bookings.");
+
         foreach (var booking in expiredBookings)
         {
-            _logger.LogInformation($"Expiring Booking {booking.Id} with {booking.Items.Count} seats.");
-
+            // 2. Mark the Transaction as Expired
             booking.MarkAsExpired();
 
-            // Release ALL seats associated with this booking
+            var releasedSeatIds = new List<Guid>();
+
+            // 3. Release the physical seats in Postgres
             foreach (var item in booking.Items)
             {
+                // We need to find the Seat entity to change its status to 'Available'
                 var seat = await context.Seats.FindAsync(new object[] { item.SeatId }, ct);
+
                 if (seat != null)
                 {
-                    seat.Release();
-
-                    // Publish event to turn seat Green in UI
-                    await publishEndpoint.Publish(new SeatReleasedEvent(
-                        booking.ShowtimeId,
-                        item.SeatId
-                    ), ct);
+                    seat.Release(); // Domain method: Status = Available, ReserverId = null
+                    releasedSeatIds.Add(seat.Id);
                 }
+            }
+
+            // 4. Publish ONE Batch Event
+            // This triggers the Consumer to update Mongo and SignalR in one go
+            if (releasedSeatIds.Any())
+            {
+                await publishEndpoint.Publish(new BookingExpiredEvent(
+                    booking.Id,
+                    booking.ShowtimeId,
+                    releasedSeatIds.ToArray()
+                ), ct);
+
+                _logger.LogInformation($"Released {releasedSeatIds.Count} seats for Booking {booking.Id}");
             }
         }
 
+        // 5. Commit all changes to Postgres
         await context.SaveChangesAsync(ct);
     }
 }

@@ -8,18 +8,21 @@ using MongoDB.Driver;
 
 namespace Booking.Infrastructure.Consumers;
 
-public class SeatsReservedConsumer : IConsumer<SeatsReservedEvent>
+public class BookingCreatedConsumer : IConsumer<BookingCreatedEvent>
 {
     private readonly IMongoCollection<ShowtimeDocument> _mongoCollection;
     private readonly IRealTimeNotifier _notifier;
 
-    public SeatsReservedConsumer(IMongoDatabase mongoDatabase, IRealTimeNotifier notifier)
+    public BookingCreatedConsumer(IMongoDatabase mongoDatabase, IRealTimeNotifier notifier)
     {
+        ArgumentNullException.ThrowIfNull(mongoDatabase);
+        ArgumentNullException.ThrowIfNull(notifier);
+
         _mongoCollection = mongoDatabase.GetCollection<ShowtimeDocument>("showtimes");
         _notifier = notifier;
     }
 
-    public async Task Consume(ConsumeContext<SeatsReservedEvent> context)
+    public async Task Consume(ConsumeContext<BookingCreatedEvent> context)
     {
         var message = context.Message;
 
@@ -49,8 +52,8 @@ public class SeatsReservedConsumer : IConsumer<SeatsReservedEvent>
 
         // 2. Batch Notify SignalR (One message payload)
         var seatIds = message.Seats.Select(s => s.SeatId).ToArray();
-        await _notifier.NotifySeatsLockedAsync(message.ShowtimeId, seatIds, message.UserId);
+        await _notifier.NotifySeatsStatusChangeAsync(message.ShowtimeId, seatIds, "Reserved", message.UserId);
 
-        Console.WriteLine($"[Consumer] Batch reserved {message.Seats.Count} seats.");
+        Console.WriteLine($"[Consumer] Batch reserved {message.Seats.Length} seats.");
     }
 }

@@ -43,8 +43,9 @@ public static class ServiceCollectionExtensions
         // 4. MassTransit (RabbitMQ + Outbox)
         services.AddMassTransit(o =>
         {
-            // Register the consumer
-            o.AddConsumer<Consumers.SeatsReservedConsumer>();
+            // Register the consumers
+            o.AddConsumer<Consumers.BookingCreatedConsumer>();
+            o.AddConsumer<Consumers.BookingExpiredConsumer>();
 
             o.AddEntityFrameworkOutbox<BookingDbContext>(cfg =>
             {

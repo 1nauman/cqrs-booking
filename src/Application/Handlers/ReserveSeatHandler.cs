@@ -8,7 +8,7 @@ using MassTransit;
 
 namespace Booking.Application.Handlers;
 
-public class ReserveSeatHandler : ICommandHandler<ReserveSeatsCommand, bool>
+public class ReserveSeatHandler : ICommandHandler<CreateBookingCommand, bool>
 {
     private readonly ISeatLockService _seatLockService;
     private readonly ISeatRepository _seatRepository;
@@ -32,7 +32,7 @@ public class ReserveSeatHandler : ICommandHandler<ReserveSeatsCommand, bool>
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task<bool> HandleAsync(ReserveSeatsCommand command, CancellationToken ct)
+    public async Task<bool> HandleAsync(CreateBookingCommand command, CancellationToken ct)
     {
         // 0. Basic Input Validation
         if (command.SeatIds.Length == 0)
@@ -87,14 +87,16 @@ public class ReserveSeatHandler : ICommandHandler<ReserveSeatsCommand, bool>
 
             // 5. PUBLISH EVENT
             // Create the list of items for the event
-            var eventItems = seats.Select(s => new SeatReservedItem(s.Id, s.Row, s.Number)).ToList();
+            var eventItems = seats
+                .Select(s => new SeatReservedItem(s.Id, s.Row, s.Number))
+                .ToArray();
 
-            await _publishEndpoint.Publish(new SeatsReservedEvent(
-                command.ShowtimeId,
-                booking.Id,
-                command.UserId,
-                eventItems
-            ), ct);
+            await _publishEndpoint.Publish(new BookingCreatedEvent(
+                    command.ShowtimeId,
+                    booking.Id,
+                    command.UserId,
+                    eventItems),
+                ct);
 
             // 6. COMMIT
             await _unitOfWork.SaveChangesAsync(ct);

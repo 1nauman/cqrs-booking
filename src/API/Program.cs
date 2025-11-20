@@ -18,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddScoped<ICommandHandler<ReserveSeatsCommand, bool>, ReserveSeatHandler>();
+builder.Services.AddScoped<ICommandHandler<CreateBookingCommand, bool>, ReserveSeatHandler>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();

@@ -33,42 +33,25 @@ function App() {
           .withAutomaticReconnect()
           .build();
 
-        newConnection.on("ReceiveSeatUpdate", (update: { seatId: string, status: string }) => {
-          setShowtime(prev => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              seats: prev.seats.map(s =>
-                s.seatId === update.seatId ? { ...s, status: update.status as any } : s
-              )
-            };
-          });
+        newConnection.on("SeatsStatusChanged", (event: { seatIds: string[], status: string }) => {
 
-          // If someone else took it, remove from my selection
-          if (update.status === 'Reserved') {
-            setSelectedIds(prev => prev.filter(id => id !== update.seatId));
-          }
-        });
-
-        newConnection.on("ReceiveBatchSeatUpdate", (update: { seatIds: string[], status: string }) => {
-          console.log("Batch Update:", update);
+          console.log(`[SignalR] Seats ${event.seatIds.join(', ')} are now ${event.status}`);
 
           setShowtime(prev => {
             if (!prev) return null;
             return {
               ...prev,
-              seats: prev.seats.map(s =>
-                // Check if this seat is in the update list
-                update.seatIds.includes(s.seatId)
-                  ? { ...s, status: update.status as any }
-                  : s
+              seats: prev.seats.map(seat =>
+                event.seatIds.includes(seat.seatId)
+                  ? { ...seat, status: event.status as any }
+                  : seat
               )
             };
           });
 
-          // Remove from my selection if someone else took them
-          if (update.status === 'Reserved') {
-            setSelectedIds(prev => prev.filter(id => !update.seatIds.includes(id)));
+          // Logic to handle "My Selection" invalidation
+          if (event.status === 'Reserved' || event.status === 'Sold') {
+            setSelectedIds(prev => prev.filter(id => !event.seatIds.includes(id)));
           }
         });
 

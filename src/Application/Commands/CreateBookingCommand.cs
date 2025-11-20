@@ -1,6 +1,6 @@
 namespace Booking.Application.Commands;
 
-public record ReserveSeatsCommand(
+public record CreateBookingCommand(
     Guid ShowtimeId,
     Guid[] SeatIds,
     Guid UserId);

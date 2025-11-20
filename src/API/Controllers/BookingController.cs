@@ -9,9 +9,9 @@ namespace Booking.API.Controllers;
 [Route("api/bookings")]
 public class BookingController : ControllerBase
 {
-    private readonly ICommandHandler<ReserveSeatsCommand, bool> _reserveSeatHandler;
+    private readonly ICommandHandler<CreateBookingCommand, bool> _reserveSeatHandler;
 
-    public BookingController(ICommandHandler<ReserveSeatsCommand, bool> reserveSeatHandler)
+    public BookingController(ICommandHandler<CreateBookingCommand, bool> reserveSeatHandler)
     {
         ArgumentNullException.ThrowIfNull(reserveSeatHandler);
         _reserveSeatHandler = reserveSeatHandler;
@@ -20,7 +20,7 @@ public class BookingController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> ReserveSeat([FromBody] ReserveSeatRequest request)
     {
-        var command = new ReserveSeatsCommand(request.ShowtimeId, request.SeatIds, request.UserId);
+        var command = new CreateBookingCommand(request.ShowtimeId, request.SeatIds, request.UserId);
         var success = await _reserveSeatHandler.HandleAsync(command, HttpContext.RequestAborted);
 
         if (!success)
