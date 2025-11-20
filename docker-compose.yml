@@ -63,7 +63,18 @@ services:
       - rabbitmq
     networks:
       - booking-network
-    
+
+  client:
+    container_name: booking_client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend-api
+    networks:
+      - booking-network
 
 volumes:
   postgres_booking_data:

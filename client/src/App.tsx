@@ -1,40 +1,39 @@
 import { useEffect, useState } from 'react';
 import { HubConnectionBuilder, HubConnection } from '@microsoft/signalr';
 import { api } from './api/client';
-import type { Showtime, Seat as SeatType } from './types';
+import type { Showtime } from './types';
 import { Seat } from './components/Seat';
 import { CinemaScreen } from './components/CinemaScreen';
 import { BookingSummary } from './components/BookingSummary';
-import { Loader2, Armchair } from 'lucide-react';
+import { SuccessModal } from './components/SuccessModal'; // Import the modal
+import { Loader2 } from 'lucide-react';
 
-// Constants
 const SHOWTIME_ID = "11111111-1111-1111-1111-111111111111";
-const USER_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"; // Mock User
+const USER_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
 const SEAT_PRICE = 15;
 
 function App() {
   const [showtime, setShowtime] = useState<Showtime | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false); // Success State
   const [connection, setConnection] = useState<HubConnection | null>(null);
 
-  // 1. Initialize Data & SignalR
+  // Dragging State
+  const [isDragging, setIsDragging] = useState(false);
+
   useEffect(() => {
     const init = async () => {
       try {
-        // Fetch Initial State
         const { data } = await api.get<Showtime>(`/showtimes/${SHOWTIME_ID}`);
         setShowtime(data);
 
-        // Connect SignalR
         const newConnection = new HubConnectionBuilder()
-          .withUrl("http://localhost:5000/hub/bookings")
+          .withUrl("http://localhost:8080/hub/bookings")
           .withAutomaticReconnect()
           .build();
 
         newConnection.on("ReceiveSeatUpdate", (update: { seatId: string, status: string }) => {
-          console.log("Live Update:", update);
-
           setShowtime(prev => {
             if (!prev) return null;
             return {
@@ -45,7 +44,7 @@ function App() {
             };
           });
 
-          // If someone else booked a seat I had selected, deselect it
+          // If someone else took it, remove from my selection
           if (update.status === 'Reserved') {
             setSelectedIds(prev => prev.filter(id => id !== update.seatId));
           }
@@ -54,27 +53,52 @@ function App() {
         await newConnection.start();
         await newConnection.invoke("JoinShowtime", SHOWTIME_ID);
         setConnection(newConnection);
-
       } catch (err) {
-        console.error("Initialization failed", err);
+        console.error("Init failed", err);
       }
     };
 
     init();
-
-    return () => {
-      connection?.stop();
-    };
+    return () => { connection?.stop(); };
   }, []);
 
-  // 2. Handle Selection
+  // --- DRAG SELECTION LOGIC ---
+
+  // 1. Start Dragging
+  const handleMouseDown = (id: string) => {
+    setIsDragging(true);
+    toggleSeat(id);
+  };
+
+  // 2. Drag Over (Paint)
+  const handleMouseEnter = (id: string) => {
+    if (isDragging) {
+      // Only add if not already selected to avoid flickering
+      if (!selectedIds.includes(id)) {
+        toggleSeat(id);
+      }
+    }
+  };
+
+  // 3. Stop Dragging (Global Mouse Up)
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Attach global mouse up listener
+  useEffect(() => {
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
   const toggleSeat = (id: string) => {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
 
-  // 3. Handle Booking
+  // --- BOOKING LOGIC ---
+
   const handleBooking = async () => {
     if (selectedIds.length === 0) return;
     setIsProcessing(true);
@@ -86,13 +110,26 @@ function App() {
         userId: USER_ID
       });
 
-      // Success! Clear selection. 
-      // We wait for SignalR to update the visual state to "Reserved"
+      // --- OPTIMISTIC UPDATE ---
+      // Don't wait for SignalR. We know we succeeded.
+      // Immediately mark these seats as Reserved in our local view.
+      setShowtime(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          seats: prev.seats.map(s =>
+            selectedIds.includes(s.seatId) ? { ...s, status: 'Reserved' } : s
+          )
+        };
+      });
+
+      // Clear selection and show success
       setSelectedIds([]);
+      setShowSuccess(true);
 
     } catch (error: any) {
       alert("Booking Failed: " + (error.response?.data?.message || "Unknown error"));
-      // If failed, we should probably refresh the map to see what happened
+      // Refresh data on failure to see what happened
       const { data } = await api.get<Showtime>(`/showtimes/${SHOWTIME_ID}`);
       setShowtime(data);
     } finally {
@@ -106,13 +143,14 @@ function App() {
     </div>
   );
 
-  // Group seats by Row
   const rows = [...new Set(showtime.seats.map(s => s.row))].sort();
 
   return (
-    <div className="min-h-screen bg-cinema-900 text-white p-8 pb-32 overflow-x-hidden">
+    <div className="min-h-screen bg-cinema-900 text-white p-8 pb-32 overflow-x-hidden select-none">
 
-      {/* Header */}
+      {/* Success Modal */}
+      <SuccessModal isOpen={showSuccess} onClose={() => setShowSuccess(false)} />
+
       <header className="max-w-5xl mx-auto flex justify-between items-center mb-12">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
@@ -129,7 +167,6 @@ function App() {
         </div>
       </header>
 
-      {/* Cinema Layout */}
       <main className="max-w-4xl mx-auto perspective-1000">
         <CinemaScreen />
 
@@ -144,9 +181,13 @@ function App() {
                   .map(seat => (
                     <Seat
                       key={seat.seatId}
-                      {...seat}
+                      id={seat.seatId} // Pass ID
+                      row={seat.row}
+                      number={seat.number}
+                      status={seat.status}
                       isSelected={selectedIds.includes(seat.seatId)}
-                      onClick={() => toggleSeat(seat.seatId)}
+                      onMouseDown={handleMouseDown} // Pass Handler
+                      onMouseEnter={handleMouseEnter} // Pass Handler
                     />
                   ))}
               </div>
@@ -156,7 +197,6 @@ function App() {
         </div>
       </main>
 
-      {/* Floating Action Bar */}
       <BookingSummary
         selectedCount={selectedIds.length}
         price={selectedIds.length * SEAT_PRICE}
